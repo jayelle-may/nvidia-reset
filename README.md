@@ -66,3 +66,7 @@ restarts and the driver reloads.
   acceleration, video players) will be killed when its session is torn down.
 - Not a substitute for fixing an actually-crashed/hung driver — this is for
   recovering a wedged display session without a full reboot.
+
+## Why
+
+  I have an issue with one of my monitors thatcauses it to sometimes have a vertical line on the screen that scrunches some pixels together. The fix for this on windows was either rebooting the monitor(sometimes several times) or reseting the graphics driver(which consistently fixes it the first time every time). I wanted something similar on my arch setup and this was as close as I could easily get. Might try to find a way to suspend and resume the display manager session but this is good enough for now.
