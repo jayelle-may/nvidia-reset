@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Trigger for the nvidia-reset systemd unit. Must not run inside the
+# graphical session's process tree: that session gets torn down as part of
+# the reset, which would kill this process mid-flight if it lived there.
+# --no-block hands the job to systemd and returns immediately.
+exec systemctl start --no-block nvidia-reset.service

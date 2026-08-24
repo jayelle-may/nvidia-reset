@@ -1,0 +1,7 @@
+[Unit]
+Description=Reset NVIDIA graphics drivers (unload/reload kernel modules)
+After=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nvidia-reset/nvidia-reset.sh

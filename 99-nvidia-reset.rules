@@ -1,0 +1,13 @@
+// Let an active, local member of `wheel` start/stop *only* the
+// nvidia-reset.service unit without a password prompt, so it can be bound
+// to a global keyboard shortcut. Scoped to this one unit on purpose -
+// broader systemd manage-units grants would let any wheel process control
+// arbitrary services passwordlessly.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "nvidia-reset.service" &&
+        subject.active && subject.local &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
