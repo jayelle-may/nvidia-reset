@@ -161,7 +161,7 @@ restarts and the driver reloads.
 I have an issue with one of my monitors that causes it to sometimes have a
 vertical line on the screen that scrunches some pixels together. The fix for
 this on windows was either rebooting the monitor (sometimes several times)
-or resetting the graphics driver (which consistently fixes it the first time
+or resetting the graphics driver (which consistently fixes it the first time,
 every time). I wanted something similar on my arch setup and this was as
 close as I could easily get. A true suspend/resume of the display manager
 session isn't really possible on Linux — the driver reload requires every
