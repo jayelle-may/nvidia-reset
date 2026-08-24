@@ -1,6 +1,90 @@
 #!/usr/bin/env bash
-# Trigger for the nvidia-reset systemd unit. Must not run inside the
-# graphical session's process tree: that session gets torn down as part of
-# the reset, which would kill this process mid-flight if it lived there.
-# --no-block hands the job to systemd and returns immediately.
-exec systemctl start --no-block nvidia-reset.service
+# Trigger for the nvidia-reset systemd unit, plus setup subcommands for two
+# opt-in conveniences around the reset (see README): skipping the login
+# prompt when the display manager comes back up, and restoring your open
+# apps if your desktop environment supports session restore.
+set -uo pipefail
+
+CONF=/etc/nvidia-reset.conf
+
+usage() {
+    cat >&2 <<'EOF'
+usage: nvidia-reset [--enable-autologin|--disable-autologin|--enable-session-restore]
+
+  (no args)               Trigger a reset. Meant for a keyboard shortcut.
+  --enable-autologin      Turn on one-shot autologin after a reset (asks for
+                           authentication once; each individual reset stays
+                           one-shot after that).
+  --disable-autologin     Turn it back off.
+  --enable-session-restore
+                           Turn on your desktop's native session restore
+                           (KDE, XFCE), so apps reopen after a reset. Runs as
+                           you, no authentication needed -- it's your own
+                           config, not a system one.
+EOF
+    exit 1
+}
+
+set_autologin() {
+    command -v pkexec >/dev/null || { echo "pkexec not found" >&2; exit 1; }
+    exec pkexec sed -i "s/^ONESHOT_AUTOLOGIN=.*/ONESHOT_AUTOLOGIN=$1/" "$CONF"
+}
+
+# Get-or-set a single key within an ini-style [section], preserving
+# everything else in the file. Used for the per-user desktop config files
+# below, which we don't want to fully own/overwrite.
+ini_set() {
+    local file="$1" section="$2" key="$3" value="$4"
+    mkdir -p "$(dirname "$file")"
+    touch "$file"
+    if ! grep -q "^\[$section\]" "$file"; then
+        printf '\n[%s]\n%s=%s\n' "$section" "$key" "$value" >>"$file"
+    elif awk -v s="[$section]" -v k="$key" '
+            $0==s{infsec=1; next}
+            /^\[/{infsec=0}
+            infsec && $0 ~ "^"k"=" {found=1}
+            END{exit !found}' "$file"; then
+        sed -i "/^\[$section\]/,/^\[/{s/^$key=.*/$key=$value/}" "$file"
+    else
+        sed -i "/^\[$section\]/a $key=$value" "$file"
+    fi
+}
+
+enable_session_restore() {
+    case "${XDG_CURRENT_DESKTOP:-}" in
+    *KDE*)
+        ini_set "${XDG_CONFIG_HOME:-$HOME/.config}/ksmserverrc" General loginMode restorePreviousLogout
+        echo "KDE session restore enabled (loginMode=restorePreviousLogout)."
+        ;;
+    *XFCE*)
+        if command -v xfconf-query >/dev/null; then
+            xfconf-query -c xfce4-session -p /general/SaveOnExit -n -t bool -s true 2>/dev/null ||
+                xfconf-query -c xfce4-session -p /general/SaveOnExit -s true
+            echo "XFCE session restore enabled (SaveOnExit=true)."
+        else
+            echo "xfconf-query not found; install xfconf or set it via xfce4-session-settings." >&2
+            exit 1
+        fi
+        ;;
+    *)
+        echo "No known session-restore mechanism for XDG_CURRENT_DESKTOP='${XDG_CURRENT_DESKTOP:-unset}'." >&2
+        echo "GNOME and most others don't support this upstream -- check your DE's own settings." >&2
+        exit 1
+        ;;
+    esac
+}
+
+case "${1:-}" in
+"")
+    # Must not run inside the graphical session's process tree: that session
+    # gets torn down as part of the reset, which would kill this process
+    # mid-flight if it lived there. --no-block hands the job to systemd and
+    # returns immediately.
+    exec systemctl start --no-block nvidia-reset.service
+    ;;
+--enable-autologin) set_autologin yes ;;
+--disable-autologin) set_autologin no ;;
+--enable-session-restore) enable_session_restore ;;
+-h | --help) usage ;;
+*) usage ;;
+esac

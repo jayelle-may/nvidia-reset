@@ -1,6 +1,6 @@
 # Maintainer: Jayelle May <jayelle.m.may@gmail.com>
 pkgname=nvidia-reset
-pkgver=1.1.0
+pkgver=1.2.1
 pkgrel=1
 pkgdesc="Reset NVIDIA graphics drivers without rebooting, similar to Windows' Win+Shift+B driver recovery"
 arch=('any')
