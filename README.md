@@ -6,18 +6,29 @@ Windows' Win+Shift+B driver recovery. Unloads and reloads the `nvidia`,
 display manager around the reload since nothing can hold `/dev/nvidia*` open
 while the modules are unloaded.
 
-Built for KDE Plasma on Wayland with the `nvidia-open` driver, where the
-display manager is `plasmalogin.service` (aliased via the generic
-`display-manager.service`). Should generalize to any setup where
-`display-manager.service` resolves correctly, but hasn't been tested beyond
-that.
+Originally built for KDE Plasma on Wayland with the `nvidia-open` driver,
+where the display manager is `plasmalogin.service` (aliased via the generic
+`display-manager.service`). The module names (`nvidia`/`nvidia_modeset`/
+`nvidia_drm`/`nvidia_uvm`) are the same across `nvidia`, `nvidia-open`, and
+`nvidia-dkms`, so any of those driver packages work as-is. The display
+manager handling autodetects and falls back for setups without one — see
+below.
 
 ## How it works
 
-- **`nvidia-reset.sh`** — root-context worker. Stops the display manager,
-  force-unloads the nvidia modules (falling back to `fuser -k` on stuck GPU
-  clients after 5 failed attempts, giving up after 10), reloads them, and
-  restarts the display manager.
+- **`nvidia-reset.sh`** — root-context worker. Autodetects a display
+  manager: if the systemd alias `display-manager.service` resolves, that
+  unit is stopped before the reload and restarted after. If it doesn't
+  resolve (e.g. a session launched with `startx`/`.xinitrc` from a TTY, or a
+  DM that doesn't register the alias), it instead terminates the active
+  Wayland/X11 login session directly via `loginctl` — there's nothing to
+  auto-restart in that case, so you start your session again manually
+  afterward. Either way, it then force-unloads the nvidia modules (falling
+  back to `fuser -k` on stuck GPU clients after 5 failed attempts, giving up
+  after 10) and reloads them.
+- **`nvidia-reset.conf`** — installed to `/etc/nvidia-reset.conf`. Lets you
+  override the detected display manager unit (`DM_UNIT=sddm.service`) for
+  setups where the alias resolves to the wrong thing.
 - **`nvidia-reset.service`** — a oneshot systemd unit that runs the worker
   script as root.
 - **`nvidia-reset`** — the trigger binary, meant to be bound to a keyboard
@@ -44,6 +55,7 @@ Installs:
 | `nvidia-reset` | `/usr/bin/nvidia-reset` |
 | `nvidia-reset.service` | `/usr/lib/systemd/system/nvidia-reset.service` |
 | `99-nvidia-reset.rules` | `/usr/share/polkit-1/rules.d/99-nvidia-reset.rules` |
+| `nvidia-reset.conf` | `/etc/nvidia-reset.conf` |
 
 ## Usage
 
