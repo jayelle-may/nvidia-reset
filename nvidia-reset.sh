@@ -190,8 +190,11 @@ else
     done < <(loginctl list-sessions --no-legend)
 fi
 
-# harmless no-op if not running; holds an open handle to the GPU when it is
+# harmless no-ops if not running; both hold an open handle to the GPU when
+# they are, and neither gets caught cleanly by the fuser fallback below
+# since they're long-running daemons rather than one-off GPU clients.
 systemctl stop nvidia-persistenced.service 2>/dev/null || true
+systemctl stop nvidia-cuda-mps-control.service 2>/dev/null || true
 
 unload() {
     local mod="$1" tries=0

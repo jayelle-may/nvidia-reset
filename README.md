@@ -23,9 +23,13 @@ below.
   DM that doesn't register the alias), it instead terminates the active
   Wayland/X11 login session directly via `loginctl` — there's nothing to
   auto-restart in that case, so you start your session again manually
-  afterward. Either way, it then force-unloads the nvidia modules (falling
-  back to `fuser -k` on stuck GPU clients after 5 failed attempts, giving up
-  after 10) and reloads them.
+  afterward. It also stops `nvidia-persistenced` and
+  `nvidia-cuda-mps-control` unconditionally (both are long-running daemons
+  that hold a GPU handle but wouldn't get caught by the `fuser` fallback
+  below, since neither looks like a one-off client). Either way, it then
+  force-unloads the nvidia modules (falling back to `fuser -k` on stuck GPU
+  clients — games, CUDA workloads, hardware video encode/decode, etc. —
+  after 5 failed attempts, giving up after 10) and reloads them.
 - **`nvidia-reset.conf`** — installed to `/etc/nvidia-reset.conf`. Lets you
   override the detected display manager unit (`DM_UNIT=sddm.service`) for
   setups where the alias resolves to the wrong thing, and holds the one-shot
